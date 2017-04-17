@@ -9,6 +9,7 @@
 # Base template names
 vanillaTemplateDebian="debian-8"
 vanillaTemplateFedora="fedora-23"
+exoticSuffix="-exotic-test"
 
 # Utility functions
 function echoerr {
@@ -57,12 +58,12 @@ function qubesRecipeTemplateTeardown {
 
 # Recipe
 ## Clone new TemplateVMs
-exoticTemplateDebian="${vanillaTemplateDebian}-exotic2"
-exoticTemplateFedora="${vanillaTemplateFedora}-exotic2"
+exoticTemplateDebian="${vanillaTemplateDebian}-${exoticSuffix}"
+exoticTemplateFedora="${vanillaTemplateFedora}-${exoticSuffix}"
 
 echoerr "Cloning base templates"
-qubesRecipeCloneExotic "$vanillaTemplateDebian" "$exoticTemplateDebian"
-#qubesRecipeCloneExotic "$vanillaTemplateFedora" "$exoticTemplateFedora"
+qubesRecipeClone "$vanillaTemplateDebian" "$exoticTemplateDebian"
+#qubesRecipeClone "$vanillaTemplateFedora" "$exoticTemplateFedora"
 
 ## Adjust new TemplateVMs packages
 ### debian-8-exotic
@@ -84,11 +85,10 @@ qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-get update'
 #### Install packages
 qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-get --yes install google-chrome-stable spotify-client'
 
-#### Generate AppVMs
-echoerr "Creating AppVMs"
-qvm-create -t "$exoticTemplateDebian" -l orange juke2
-
 #### Teardown
 qubesRecipeTemplateTeardown "$exoticTemplateDebian"
 
+#### Generate AppVMs
+echoerr "Creating AppVMs"
+qvm-create -t "$exoticTemplateDebian" -l orange juke2
 

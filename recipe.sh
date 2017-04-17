@@ -11,26 +11,15 @@ vanillaTemplateDebian="debian-8"
 vanillaTemplateFedora="fedora-23"
 
 # Utility functions
-echoerr() {
+function echoerr {
     echo -e "\e[96m$@\e[39m" 1>&2
 }
-
-# Clone new TemplateVMs for third-party software
-exoticTemplateDebian="${vanillaTemplateDebian}-exotic2"
-exoticTemplateFedora="${vanillaTemplateFedora}-exotic2"
-
 function qubesRecipeClone {
     originalTemplateName="$1"
     cloneTemplateName="$2"
     echoerr "Cloning $originalTemplateName --> $cloneTemplateName"
     qvm-clone $originalTemplateName $cloneTemplateName
 }
-
-echoerr "Cloning base templates"
-qubesRecipeCloneExotic "$vanillaTemplateDebian" "$exoticTemplateDebian"
-#qubesRecipeCloneExotic "$vanillaTemplateFedora" "$exoticTemplateFedora"
-
-# Adjust new TemplateVMs packages
 function qubesRecipeRunSynchronously {
     targetQube="$1"
     targetCommand="$2"
@@ -53,25 +42,53 @@ function qubesRecipeFirewallPolicy {
     echoerr "Firewall for $targetQube set to '$targetPolicy'"
     qvm-firewall -P "$targetPolicy" "$targetQube"
 }
+function qubesRecipeTemplateSetup {
+    targetQube="$1"
+    echoerr "Setup $targetQube for customisation"
+    qubesRecipeStart "$targetQube"
+    qubesRecipeFirewallPolicy "$targetQube" "allow"
+}
+function qubesRecipeTemplateTeardown {
+    targetQube="$1"
+    echoerr "Setup $targetQube for customisation"
+    qubesRecipeFirewallPolicy "$targetQube" "deny"
+    qubesRecipeShutdown "$targetQube"
+}
 
-# debian-8-exotic
-# - juke (jukebox, media playback)
+# Recipe
+## Clone new TemplateVMs
+exoticTemplateDebian="${vanillaTemplateDebian}-exotic2"
+exoticTemplateFedora="${vanillaTemplateFedora}-exotic2"
 
-qubesRecipeStart "$exoticTemplateDebian"
-qubesRecipeFirewallPolicy "$exoticTemplateDebian" "allow"
+echoerr "Cloning base templates"
+qubesRecipeCloneExotic "$vanillaTemplateDebian" "$exoticTemplateDebian"
+#qubesRecipeCloneExotic "$vanillaTemplateFedora" "$exoticTemplateFedora"
 
-# Add new repos
-## Add chrome repo
+## Adjust new TemplateVMs packages
+### debian-8-exotic
+### - juke (jukebox, media playback)
+
+#### Setup
+qubesRecipeTemplateSetup "$exoticTemplateDebian"
+
+#### Add new repos
+##### Add chrome repo
 qubesRecipeRunSynchronously "$exoticTemplateDebian" 'wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee -a /etc/apt/sources.list.d/google.list'
 
-## Add spotify repo
+##### Add spotify repo
 qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys BBEBDCB318AD50EC6865090613B00F1FD2C19886 && echo deb http://repository.spotify.com stable non-free | sudo tee /etc/apt/sources.list.d/spotify.list'
 
-# Update package lists
+#### Update package lists
 qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-get update'
 
-# Install packages
+#### Install packages
 qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-get --yes install google-chrome-stable spotify-client'
 
-qubesRecipeFirewallPolicy "$exoticTemplateDebian" "deny"
-qubesRecipeShutdown "$exoticTemplateDebian"
+#### Generate AppVMs
+echoerr "Creating AppVMs"
+qvm-create -t "$exoticTemplateDebian" -l orange juke2
+
+#### Teardown
+qubesRecipeTemplateTeardown "$exoticTemplateDebian"
+
+

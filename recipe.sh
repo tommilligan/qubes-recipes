@@ -11,84 +11,135 @@ vanillaTemplateDebian="debian-8"
 vanillaTemplateFedora="fedora-23"
 exoticSuffix="-exotic-test"
 
+
 # Utility functions
 function echoerr {
     echo -e "\e[96m$@\e[39m" 1>&2
 }
 function qubesRecipeClone {
-    originalTemplateName="$1"
-    cloneTemplateName="$2"
+    local originalTemplateName="$1"
+    local cloneTemplateName="$2"
     echoerr "Cloning $originalTemplateName --> $cloneTemplateName"
     qvm-clone $originalTemplateName $cloneTemplateName
 }
 function qubesRecipeRunSynchronously {
-    targetQube="$1"
-    targetCommand="$2"
+    local targetQube="$1"
+    local targetCommand="$2"
     echoerr "Connecting to $targetQube to run '$targetCommand'"
     qvm-run --pass-io "$targetQube" "$targetCommand"
 }
 function qubesRecipeStart {
-    targetQube="$1"
+    local targetQube="$1"
     echoerr "Starting $targetQube"
     qvm-start "$targetQube"
 }
 function qubesRecipeShutdown {
-    targetQube="$1"
+    local targetQube="$1"
     echoerr "Shutting down $targetQube"
     qvm-shutdown "$targetQube"
 }
 function qubesRecipeFirewallPolicy {
-    targetQube="$1"
-    targetPolicy="$2"
+    local targetQube="$1"
+    local targetPolicy="$2"
     echoerr "Firewall for $targetQube set to '$targetPolicy'"
     qvm-firewall -P "$targetPolicy" "$targetQube"
 }
 function qubesRecipeTemplateSetup {
-    targetQube="$1"
+    local targetQube="$1"
     echoerr "Setup $targetQube for customisation"
     qubesRecipeStart "$targetQube"
     qubesRecipeFirewallPolicy "$targetQube" "allow"
 }
 function qubesRecipeTemplateTeardown {
-    targetQube="$1"
+    local targetQube="$1"
     echoerr "Setup $targetQube for customisation"
     qubesRecipeFirewallPolicy "$targetQube" "deny"
     qubesRecipeShutdown "$targetQube"
 }
 
-# Recipe
-## Clone new TemplateVMs
-exoticTemplateDebian="${vanillaTemplateDebian}-${exoticSuffix}"
-exoticTemplateFedora="${vanillaTemplateFedora}-${exoticSuffix}"
+# Subshell functions
+function qubesRecipeSubTemplateNameExotic {
+    # Run as subshell - stdout = exoticTemplateName
+    local originalTemplateName="$1"
+    local exoticTemplateName="${originalTemplateName}${exoticSuffix}"
+    echoerr "Generated exotic template name $exoticTemplateName"
+    echo "$exoticTemplateName"
+}
 
-echoerr "Cloning base templates"
-qubesRecipeClone "$vanillaTemplateDebian" "$exoticTemplateDebian"
-#qubesRecipeClone "$vanillaTemplateFedora" "$exoticTemplateFedora"
+# Recipes
+function qubesRecipeRecipeDebianExotic {
+    # Recipe for Debian based VMs
+    echoerr "Starting Debian recipe"
 
-## Adjust new TemplateVMs packages
-### debian-8-exotic
-### - juke (jukebox, media playback)
+    ## debian-8-exotic
+    ### Clone new TemplateVM
+    echoerr "Making exotic TemplateVM for third-party packages"
+    local exoticTemplateDebian=$(qubesRecipeSubTemplateNameExotic "$vanillaTemplateDebian")
+    qubesRecipeClone "$vanillaTemplateDebian" "$exoticTemplateDebian"
 
-#### Setup
-qubesRecipeTemplateSetup "$exoticTemplateDebian"
+    #### Setup
+    qubesRecipeTemplateSetup "$exoticTemplateDebian"
 
-#### Add new repos
-##### Add chrome repo
-qubesRecipeRunSynchronously "$exoticTemplateDebian" 'wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee -a /etc/apt/sources.list.d/google.list'
+    #### Add new repos
+    ##### Add chrome repo
+    qubesRecipeRunSynchronously "$exoticTemplateDebian" 'wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee -a /etc/apt/sources.list.d/google.list'
 
-##### Add spotify repo
-qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys BBEBDCB318AD50EC6865090613B00F1FD2C19886 && echo deb http://repository.spotify.com stable non-free | sudo tee /etc/apt/sources.list.d/spotify.list'
+    ##### Add spotify repo
+    qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys BBEBDCB318AD50EC6865090613B00F1FD2C19886 && echo deb http://repository.spotify.com stable non-free | sudo tee /etc/apt/sources.list.d/spotify.list'
 
-#### Update package lists
-qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-get update'
+    #### Update package lists
+    #qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-get update'
 
-#### Install packages
-qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-get --yes install google-chrome-stable spotify-client'
+    #### Install packages
+    qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-get --yes install google-chrome-stable spotify-client'
 
-#### Teardown
-qubesRecipeTemplateTeardown "$exoticTemplateDebian"
+    #### Teardown
+    qubesRecipeTemplateTeardown "$exoticTemplateDebian"
 
-#### Generate AppVMs
-echoerr "Creating AppVMs"
-qvm-create -t "$exoticTemplateDebian" -l orange juke2
+    ## Generate AppVMs
+    echoerr "Creating AppVMs"
+    ### juke (jukebox, media playback)
+    qvm-create -t "$exoticTemplateDebian" -l orange juke
+}
+function qubesRecipeRecipeDebianExotic {
+    # Recipe for Debian based VMs
+    echoerr "Starting Debian recipe"
+
+    ## debian-8-exotic
+    ### Clone new TemplateVM
+    echoerr "Making exotic TemplateVM for third-party packages"
+    local exoticTemplateDebian=$(qubesRecipeSubTemplateNameExotic "$vanillaTemplateFedora")
+    qubesRecipeClone "$vanillaTemplateFedora" "$exoticTemplateDebian"
+
+    #### Setup
+    qubesRecipeTemplateSetup "$exoticTemplateDebian"
+
+    #### Add new repos
+    ##### Add chrome repo
+    qubesRecipeRunSynchronously "$exoticTemplateDebian" 'wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee -a /etc/apt/sources.list.d/google.list'
+
+    ##### Add spotify repo
+    qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys BBEBDCB318AD50EC6865090613B00F1FD2C19886 && echo deb http://repository.spotify.com stable non-free | sudo tee /etc/apt/sources.list.d/spotify.list'
+
+    #### Update package lists
+    #qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-get update'
+
+    #### Install packages
+    qubesRecipeRunSynchronously "$exoticTemplateDebian" 'sudo apt-get --yes install google-chrome-stable spotify-client'
+
+    #### Teardown
+    qubesRecipeTemplateTeardown "$exoticTemplateDebian"
+
+    ## Generate AppVMs
+    echoerr "Creating AppVMs"
+    ### juke (jukebox, media playback)
+    qvm-create -t "$exoticTemplateDebian" -l orange juke
+}
+
+
+# Main
+echoerr "Running qubes-recipes"
+#qubesRecipeRecipeDebianExotic
+qubesRecipeRecipeFedoraExotic
+
 

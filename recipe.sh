@@ -6,16 +6,12 @@
 # bash <(qvm-run --pass-io <src-vm> 'cat ~/Documents/qubes-recipe.sh')
 ########
 
+qubesRecipeMode=$1
+
 # Base template names
 vanillaTemplateDebian="debian-8"
 vanillaTemplateFedora="fedora-23"
-exoticSuffix="-exotic-test"
-
-# Debug options
-## Do not clone or create VMs
-debugNoCreateTemplateVMs=true
-debugNoCreateAppVMs=true
-
+exoticSuffix="-exotic"
 
 # Utility functions
 function qrInfo {
@@ -24,6 +20,18 @@ function qrInfo {
 function qrWarn {
     echo -e "\e[33mqubes-recipes|WARN|$@\e[39m" 1>&2
 }
+
+# Debug options
+## Do not clone or create VMs
+debugNoCreateTemplateVMs=false
+debugNoCreateAppVMs=false
+if [ "$qubesRecipeMode" == "debug" ] ; then
+    qrWarn 'Running in debug mode'
+    debugNoCreateTemplateVMs=true
+    debugNoCreateAppVMs=true
+fi
+
+# QubesOS wrappers
 function qubesRecipeClone {
     local originalTemplateName="$1"
     local cloneTemplateName="$2"

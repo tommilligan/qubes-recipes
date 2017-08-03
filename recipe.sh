@@ -21,6 +21,13 @@ function qrWarn {
     echo -e "\e[33mqubes-recipes|WARN|$@\e[39m" 1>&2
 }
 
+# Ensure we're running on dom0'
+hostname="$(hostname)"
+if [ "$hostname" != "dom0" ] ; then
+    qrWarn "qubes-recipes need to be run from 'dom0' - this is '$hostname'"
+    exit
+fi
+
 # Debug options
 ## Do not clone or create VMs
 debugNoCreateTemplateVMs=false

@@ -1,1 +1,1 @@
-pyqubes >= 0.0.3
+pyqubes == 0.0.3
